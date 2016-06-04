@@ -1,0 +1,101 @@
+#!/usr/bin/python
+#
+# This will kill a channel's ffmpeg (by name, as defined in channel.conf)
+#
+# Usage: killchannel <channel>
+#
+#
+import os
+import sys
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+
+if len(sys.argv)!=2:
+  print "Usage: killchannel <channel dir>"
+  exit()
+
+channelName=""
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+#^^^^the fuck was that all about?
+
+ffmpegname="ffmpeg" #default
+
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+#
+#we have what we need.
+
+#first kill any director and filler scripts.
+#these must be killed before ffmpegs,
+#or you may miss something.
+if os.path.isfile(channelPath+'director.pid'):
+  f = open(channelPath+'director.pid')
+  tmp = f.readlines()
+  f.close()
+  dpid = tmp[0].strip()
+  os.system('/bin/kill -9 '+dpid)
+  #may as well delete that file, since it
+  #is now invalid.
+  os.remove(channelPath+'director.pid')
+
+if os.path.isfile(channelPath+'fillshow.pid'):
+  f = open(channelPath+'fillshow.pid')
+  tmp = f.readlines()
+  f.close()
+  dpid = tmp[0].strip()
+  os.system('/bin/kill -9 '+dpid)
+  #may as well delete that file, since it
+  #is now invalid.
+  os.remove(channelPath+'fillshow.pid')
+
+if os.path.isfile(channelPath+'cameraman.pid'):
+  f = open(channelPath+'cameraman.pid')
+  tmp = f.readlines()
+  f.close()
+  dpid = tmp[0].strip()
+  os.system('/bin/kill -9 '+dpid)
+  #may as well delete that file, since it
+  #is now invalid.
+  os.remove(channelPath+'cameraman.pid')
+
+
+#hopefully, you've linked ffmpeg to other filenames
+#and put that in channel.conf.  If you didn't, you
+#should have.  Yes, there are more elegant ways to
+#do this, but I'm over my head already, give me a 
+#break.  Or don't.  I'm taking one anyway. Union.
+#
+#we're doing it the cheesy way.
+
+cmd = '/bin/ps -A | grep '+ffmpegname+' > /run/shm/tempchk.'+channelName
+os.system(cmd)
+if os.path.isfile('/run/shm/tempchk.'+channelName):
+  f = open('/run/shm/tempchk.'+channelName,'r')
+  tmp=f.readlines()
+  f.close()
+  if len(tmp)>0:
+    for s in tmp:
+      l = s.strip()
+      a = l.split(' ')
+      os.system('/bin/kill -9 '+a[0])
+    
+
+#resiliant son of a bitch sometimes.  
+#nuke it from orbit, to be sure.
+os.system('/usr/bin/killall cameraman ; /usr/bin/killall '+ffmpegname)
+#has to be done as fast as possible. It's tough.
+
+#holy shit this thing, I swear.  If this doesn't work, you have to 
+#type in the stuff in the above os.system call, with the filename
+#for your ffmpeg (usually ffmpeg) at the second killall.
+#it really is a ball buster, sometimes.

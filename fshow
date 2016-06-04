@@ -1,0 +1,53 @@
+#!/usr/bin/python
+#
+# fshow:  Dicky B (dickyb@dickyb.com)
+#
+# Displays preShow Channel Identification video
+# no overlays
+# very simple script
+#
+import os
+import sys
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+if len(sys.argv)!= 3:
+  print "Usage:  fshow <channel name> <full video path>"
+  exit()
+
+#fill in channel config info
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+#note: only bother to parse what we need.  Treat the config like a salad bar.
+
+#derive more from config
+ffmpegcmd = ffmpegpath+ffmpegname
+
+# make sure all cruft is clean
+os.system(basepath+'killcruft '+channelName)
+
+
+
+#bust up the monster ffmpeg line for ease of neatness
+precmd=ffmpegcmd+' -re -i '+sys.argv[2]+' '
+midcmd='-c:v mpeg2video -b:v 6000k -c:a libfaac -b:a 128k -f mpegts - | '
+postcmd=ffmpegcmd+' -re -i - '+feedurl
+
+#slap it back together
+fullcmd=precmd+midcmd+postcmd
+#run that pig
+os.system(fullcmd)

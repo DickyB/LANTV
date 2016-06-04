@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# If killchannel isn't doing the job of stopping
+# the channel, modify this to reflect your ffmpeg
+# filename (usually ffmpeg) and run this.
+#
+# it's a last-ditch thing, really.
+#
+
+/usr/bin/killall cameraman ; /usr/bin/killall ffmpeg

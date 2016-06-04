@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# This is completely OPTIONAL, and is only useful in specific situations.
+# read the ReadMe.txt for what is probably far too little information about
+# what this script does.  It uses almost the same syntax as awesomeshow, with
+# minor differences.
+
+$2/queueshowtitle $1 "Awesome Show" "$3/awesomeshow" "/shows/Awesome Show/Season" $4
+
+
+
+
+
+

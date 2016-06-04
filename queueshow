@@ -1,0 +1,173 @@
+#!/usr/bin/python
+#
+# queueshow by Dicky B (dickyb@dickyb.com)
+#
+# this is called from the Show files to search
+# the MySQL database and find all the episodes
+# of the show, load index, increment index, 
+# check if index is too high, if so, zero, then
+# write the episode full path filename to 
+# /path/to/channel/current.episode
+# and episode length to
+# /path/to/channel/current.length
+#
+import os
+import sys
+import MySQLdb
+
+if len(sys.argv)!=5:
+  print 'Usage: queueshow <channel> <Friendly Name> </path/to/channel/index/> <search string>'
+  print sys.argv
+  exit()
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+channelName=""
+channelPath=""
+ffmpegname=""
+ffmpegpath=""
+ffmpegcmd=""
+channelFullName=""
+indexpath=""
+showspath=""
+feedurl=""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+inphone=""
+dynfont1=""
+dynfont2=""
+dynfont3=""
+phonefont=""
+mysqlhost=""
+mysqlport=0
+mysqluser=""
+mysqlpass=""
+mysqldatabase=""
+mysqltable=""
+
+# many voodoo here to set up paths and commandlines and 
+# all that shit.  If you don't know what it does,
+# don't change it.  Or at least make backups first.
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+schedulebase=channelPath+"schedule"
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          phonefont=line[1].strip()
+        if line[0].strip() == 'mysqlhost':
+          mysqlhost=line[1].strip()
+        if line[0].strip() == 'mysqlport':
+          mysqlport=int(line[1].strip())
+        if line[0].strip() == 'mysqluser':
+          mysqluser=line[1].strip()
+        if line[0].strip() == 'mysqlpass':
+          mysqlpass=line[1].strip()
+        if line[0].strip() == 'mysqldatabase':
+          mysqldatabase=line[1].strip()
+        if line[0].strip() == 'mysqltable':
+          mysqltable=line[1].strip()
+          
+
+ffmpegcmd=ffmpegpath+ffmpegname
+indexpath=channelPath+'index/'
+fontpath=basepath+'Font/'
+logopath=basepath+'Logo/'
+
+
+FriendlyName = sys.argv[2]
+indexfile = sys.argv[3]
+Search = sys.argv[4]
+
+
+
+cnx=MySQLdb.connect(mysqlhost,mysqluser,mysqlpass,mysqldatabase)
+cursor=cnx.cursor()
+# use name in path above seasons below
+numepisodes=0
+fpath=[]
+fname=[]
+leng=[]
+cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%"""+Search+"""%'""")
+# use name in path above seasons above
+for (fullpath,filename,length) in cursor:
+	numepisodes = numepisodes + 1
+	leng.append(length.strip())
+	fname.append(filename.strip())
+	fpath.append(fullpath.strip())	
+cursor.close()
+cnx.close()
+#all episodes' info loaded in
+
+
+#load index
+epindex=0
+if os.path.isfile(indexfile+'.idx'):
+  f = open(indexfile+'.idx','r')
+  tmp = f.readlines()
+  f.close()
+  epindex=int(tmp[0].strip())
+
+#write full path filename of current episode video
+f = open(channelPath+'current.episode','w')
+f.write(fpath[epindex]+'\n')
+f.close()
+
+tstr=leng[epindex]
+#tstr is a timecode in HH:MM:SS format
+#we need to convert to SSSS
+thour=int(tstr[0:2])
+tmin=int(tstr[3:5])
+tsec=int(tstr[6:8])
+showlengthseconds=(thour*360)+(tmin*60)+tsec
+
+#write to length file
+f = open(channelPath+'current.length','w')
+f.write(str(showlengthseconds)+'\n')
+f.close()
+
+#increment index
+epindex=epindex+1
+#account for number of episodes
+if epindex>=numepisodes:
+  epindex=0
+#write index file
+f=open(indexfile+'.idx','w')
+f.write(str(epindex)+'\n')
+f.close()
+
+
+
+
+

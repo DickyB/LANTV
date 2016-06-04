@@ -1,0 +1,289 @@
+#!/usr/bin/python
+#
+# pickfill:  Dicky B (dickyb@dickyb.com)
+#
+# pickfill has to be modified for your filler episodes.
+# it is fairly straightforward, but it does take some editing.
+#
+# there are MySQL queries that need to be changed below.
+# see Shows/awesomeshow for search phrase hints.
+#
+#
+# Note: This has specialized fillers for Sat/Sun mornings.
+#       It's a little fancy, but if you can't figure out
+#       how it works, disable weekdayrules (search for disable, it's commented)
+#
+import datetime
+import MySQLdb
+import os
+import os.path
+import random
+import sys
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+if len(sys.argv)!= 2:
+  print "Usage:  pickfill <channel>"
+  exit()
+
+channelpath=""
+ffmpeg = ""
+ffmpegpath = ""
+logoimage=""
+feedurl = ""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+dynfont1 = ""
+dynfont2 = ""
+dynfont3 = ""
+inphone = ""
+inphonefont = ""
+splashpath=""
+splashname=""
+splashext=""
+mysqlhost=""
+mysqlport=0
+mysqluser=""
+mysqlpass=""
+mysqldatabase=""
+mysqltable=""
+
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'splashpath':
+          splashpath=line[1].strip()
+        if line[0].strip() == 'splashname':
+          splashname=line[1].strip()
+        if line[0].strip() == 'splashext':
+          splashext=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          inphonefont=line[1].strip()
+        if line[0].strip() == 'logoimage':
+          logoimage=line[1].strip()
+        if line[0].strip() == 'mysqlhost':
+          mysqlhost=line[1].strip()
+        if line[0].strip() == 'mysqlport':
+          mysqlport=int(line[1].strip())
+        if line[0].strip() == 'mysqluser':
+          mysqluser=line[1].strip()
+        if line[0].strip() == 'mysqlpass':
+          mysqlpass=line[1].strip()
+        if line[0].strip() == 'mysqldatabase':
+          mysqldatabase=line[1].strip()
+        if line[0].strip() == 'mysqltable':
+          mysqltable=line[1].strip()
+
+
+ffmpegcmd = ffmpegpath+ffmpegname
+fontpath = basepath+'Font/'
+logopath = basepath+'Logo/'+logoimage
+indexdir = channelPath+'index/'
+
+
+offsetfile=channelPath+"offset.min"
+fillerfile=channelPath+"current.filler"
+filleroffset=channelPath+"current.filleroffset"
+
+
+
+
+
+noffset="0"
+
+# use name in path above seasons below
+def pickschoolhouse():
+	numepisodes = 0
+	fpath = []
+	fname = []
+	leng = []
+
+	cnx=MySQLdb.connect(mysqlhost,mysqluser,mysqlpass,mysqldatabase)
+	cursor=cnx.cursor()
+	idx = ""
+
+	cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%/Schoolhouse Funk/School%'""")
+	idx=indexdir+"schoolhouse.idx"
+# use name in path above seasons above
+	
+	for (fullpath,filename,length) in cursor:
+		numepisodes = numepisodes + 1
+		leng.append(length)
+		fname.append(filename)
+		fpath.append(fullpath)	
+	cursor.close()
+	cnx.close()
+	#print numepisodes
+	curnum = 0
+	if os.path.isfile(idx):
+		f = open(idx,'r')
+		mole = f.read()
+		f.close();
+		curnum=int(mole)
+		curnum = curnum + 1
+	if curnum >= numepisodes:
+		curnum=0
+	print curnum
+	f = open(idx,'w')
+	f.write(str(curnum))
+	f.write("\n")
+	f.close()
+	return fpath[curnum]
+
+
+def pickafiller():
+	numepisodes = 0
+	fpath = []
+	fname = []
+	leng = []
+
+	cnx=MySQLdb.connect(mysqlhost,mysqluser,mysqlpass,mysqldatabase)
+	cursor=cnx.cursor()
+	idx = ""
+	cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%/filler/Music Videos/mpg/%'""")
+# use name in path above seasons above
+	for (fullpath,filename,length) in cursor:
+		numepisodes = numepisodes + 1
+		leng.append(length)
+		fname.append(filename)
+		fpath.append(fullpath)	
+	cursor.close()
+	cnx.close()
+	#print numepisodes
+	curnum = random.randint(0,numepisodes-1)
+	if curnum >= numepisodes:
+		curnum=0
+	return fpath[curnum]
+
+
+
+
+
+
+
+#what time is it, yo?
+#DOW 0=Monday ... 6=Sunday
+DOW=func.getDayOfWeek()
+NowHour=func.getCurrentHour()
+NowMinute=func.getCurrentMinute()
+NowSecond=func.getCurrentSecond()
+TODMin=func.getTODMin()
+
+
+numepisodes = 0
+fpath = []
+fname = []
+leng = []
+
+cnx=MySQLdb.connect(mysqlhost,mysqluser,mysqlpass,mysqldatabase)
+cursor=cnx.cursor()
+# use name in path above seasons below
+
+idx = ""
+override=""
+weekdayrules = True
+if DOW > 4: # 5 and 6 Sat Sun
+	if TODMin > 370:		#after 6:10am
+		if TODMin < 900:	#before 3:00pm
+			weekdayrules = False #do schoolhouse rock/music videos fills
+
+#uncomment this to disable weird sat/sun morning fillers
+#weekdayrules = True
+
+
+if weekdayrules:
+	whichfill = random.randint(1,3)
+	if whichfill == 1:
+		cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%/Benny Gill/BH%'""")
+		idx=indexdir+"bennygill.idx"
+	if whichfill == 2:
+		cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%/Lads In The Hall/Lads In The Hall - Season%'""")
+		idx=indexdir+"ladsinthehall.idx"
+		noffset="120" # THIS is to skip the first 2 minutes of the video (intro junk)
+	if whichfill == 3:
+		cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%/Ponty Mythons Swimming Carnival/%'""")
+		idx=indexdir+"pontymython.idx"
+		
+	# use name in path above seasons above
+	for (fullpath,filename,length) in cursor:
+		numepisodes = numepisodes + 1
+		leng.append(length)
+		fname.append(filename)
+		fpath.append(fullpath)	
+	cursor.close()
+	cnx.close()
+
+	#print numepisodes
+	curnum = 0
+	if os.path.isfile(idx):
+		f = open(idx,'r')
+		mole = f.read()
+		f.close();
+		curnum=int(mole)
+	curnum = curnum + 1
+	if curnum >= numepisodes:
+		curnum=0
+	override=fpath[curnum]
+
+	f = open(idx,'w')
+	f.write(str(curnum))
+	f.write("\n")
+	f.close()
+else:
+	#determine if first one HERE
+	if not os.path.isfile(channelPath+"filler.first"):
+		override = pickschoolhouse()
+		f = open(channelPath+"filler.first",'w')
+		f.write("Frist!\n\n")
+		f.close()
+	else:
+		override=pickafiller()
+
+#print idx
+#exit()
+		
+
+idf = channelPath+"current.filler"
+ido = channelPath+"current.filleroffset"
+
+p = open(idf,'w')
+p.write(override)
+p.close()
+
+p = open(ido,'w')
+p.write(noffset)
+p.close()
+
+print override

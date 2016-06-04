@@ -1,0 +1,222 @@
+#!/usr/bin/python
+import os
+import sys
+
+#a few things to make it easier for me
+import func
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+
+if len(sys.argv)!=2:
+  print "Usage: director <channel dir>"
+  exit()
+
+
+channelName=""
+channelPath=""
+ffmpegname=""
+ffmpegpath=""
+ffmpegcmd=""
+channelFullName=""
+indexpath=""
+showspath=""
+feedurl=""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+inphone=""
+dynfont1=""
+dynfont2=""
+dynfont3=""
+phonefont=""
+
+# many voodoo here to set up paths and commandlines and 
+# all that shit.  If you don't know what it does,
+# don't change it.  Or at least make backups first.
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+schedulebase=channelPath+"schedule"
+
+#write pid to channel's director.pid for killing later.
+pid=os.getpid()
+f=open(channelPath+'director.pid','w')
+f.write(str(pid))
+f.write('\n')
+f.close()
+
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          phonefont=line[1].strip()
+          
+
+ffmpegcmd=ffmpegpath+ffmpegname
+indexpath=channelPath+'index/'
+fontpath=basepath+'Font/'
+logopath=basepath+'Logo/'
+
+
+# config voodoo area clear
+#
+
+#what time is it, yo?
+#DOW 0=Monday ... 6=Sunday
+DOW=func.getDayOfWeek()
+NowHour=func.getCurrentHour()
+NowMinute=func.getCurrentMinute()
+NowSecond=func.getCurrentSecond()
+TODMin=func.getTODMin()
+
+schedulefile=schedulebase
+scheduledshow=""
+ShowSchedule=False
+offset=0 
+
+#check if dayofweek override schedule is preset, if so,
+#use that instead of default.
+if os.path.isfile(schedulefile+'.'+str(DOW)):
+  schedulefile=schedulefile+'.'+str(DOW)
+  
+#read schedule
+
+f = open(schedulefile,"r")
+schedulelines = f.readlines()
+f.close()
+
+knownstarttime=0
+#get last known show start time
+if os.path.isfile(channelPath+'current.start'):
+  f = open(channelPath+'current.start','r')
+  tmp=f.readlines()
+  f.close()
+  knownstarttime=int(tmp[0].strip())
+
+
+FullSet=False
+ShowStart=False
+#determine what show should be running at this minute
+#much voodoo
+for x in range(0,len(schedulelines)):
+  s=schedulelines[x].split(':')
+  if len(s)>3: #valid schedule entry
+    start=int(s[1])+(int(s[0])*60) #start minute of show
+    end=int(s[2])+start #end minute of show
+    if TODMin >= start: #if it's at or later than start minute
+      if TODMin < end: #and less than end minute
+        #this is the current show that's supposed to be playing.
+        cshow=s[3].strip() #here is the show filename
+        scheduledshow=cshow
+        offset=((TODMin-start)*60)+NowSecond #how far in the show are we supposed to be (in seconds)
+        scheduledstart=start #we were supposed to start this show at this time
+        print start
+        if start != knownstarttime:
+          ShowStart=True
+          FullSet=True
+        if TODMin >= (end-5): #make a note if it's time to show the schedule onscreen
+          ShowSchedule=True
+      if TODMin == start: #assume SHOWTIME!
+        offset=0
+        ShowStart=True
+    
+#scheduledshow contains what show we're supposed to be showing
+#scheduledstart contains when current show was supposed to have started
+#ShowSchedule is True or False, show schedule if true, but only
+#if we didn't already do it.
+#offset contains number of seconds into the show we're supposed to be.
+#if offset = 0, it's beginning of show.  Period.
+
+if ShowStart:
+  #here's where we run the showfile
+  #showinfo needs to be reworked for subdirectory channels (mark3)
+
+  #tweak to allow for 1 schoolhouse rock after every show
+  if os.path.isfile(channelPath+"filler.first"):
+    os.remove(channelPath+"filler.first")
+  #write startfile, to indicate when current show was supposed to start
+  #this is so we can determine if we need to start a new show, or
+  #continue, in case we weren't running for a while
+  #also for check in case of back-to-back shows of the same name
+  f = open(channelPath+'current.start','w')
+  f.write(str(scheduledstart)+'\n\n')
+  f.close()
+  
+      
+#  clear onscreen text, just like how cleartext does it.
+  f = open(dyntext2,"r+")
+  f.seek(0)
+  f.truncate(0)
+  f.write('\n\n')
+  f.close()
+  f = open(dyntext3,"r+")
+  f.seek(0)
+  f.truncate(0)
+  f.write('\n\n')
+  f.close()
+
+
+
+if ShowStart:
+  print "Start Show"
+  #this is where we call the current Show file
+  #Show file args: <channel> </path/to/queueshow/> </path/to/channel/index/>  
+  if (offset == 0) or FullSet:
+    cmd=showspath+scheduledshow+' '+channelName+' "'+basepath+'" "'+indexpath+'"'
+    os.system(cmd)
+  #call cameraman:  /path/to/cameraman <channel> <videofullpath> <offset>
+  f = open(channelPath+'current.episode','r')
+  tmp=f.readlines()
+  f.close()
+  vfp=tmp[0].strip()
+  cmd=basepath+'cameraman '+channelName+' "'+vfp+'" '+str(offset)
+  os.system(cmd)
+  #that should work.  
+else:
+  print "Restart @ "+str(offset)+" seconds."
+  if func.isRunning(ffmpegname):
+    print "We ok."
+  else:
+    print ffmpegname+" is not running."
+    #call cameraman:  /path/to/cameraman <channel> <videofullpath> <offset>
+    f = open(channelPath+'current.episode','r')
+    tmp=f.readlines()
+    f.close()
+    vfp=tmp[0].strip()
+    cmd=basepath+'cameraman '+channelName+' "'+vfp+'" '+str(offset)
+    os.system(cmd)
+
+if ShowSchedule:
+  cmd=basepath+'showschedule '+channelName
+  os.system(cmd)
+   
+

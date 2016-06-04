@@ -1,0 +1,172 @@
+#!/usr/bin/python
+import sys
+import os
+import os.path
+import MySQLdb
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+
+if len(sys.argv)!=6:
+  print len(sys.argv)
+  print "Usage: queueshowtitle <channel dir> <Friendly Name> <index> <search phrase>"
+  exit()
+
+
+channelName=""
+channelPath=""
+ffmpegname=""
+ffmpegpath=""
+ffmpegcmd=""
+channelFullName=""
+indexpath=""
+showspath=""
+feedurl=""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+inphone=""
+dynfont1=""
+dynfont2=""
+dynfont3=""
+phonefont=""
+mysqlhost=""
+mysqlport=0
+mysqluser=""
+mysqlpass=""
+mysqldatabase=""
+mysqltable=""
+
+# many voodoo here to set up paths and commandlines and 
+# all that shit.  If you don't know what it does,
+# don't change it.  Or at least make backups first.
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+schedulebase=channelPath+"schedule"
+
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          phonefont=line[1].strip()
+        if line[0].strip() == 'mysqlhost':
+          mysqlhost=line[1].strip()
+        if line[0].strip() == 'mysqlport':
+          mysqlport=int(line[1].strip())
+        if line[0].strip() == 'mysqluser':
+          mysqluser=line[1].strip()
+        if line[0].strip() == 'mysqlpass':
+          mysqlpass=line[1].strip()
+        if line[0].strip() == 'mysqldatabase':
+          mysqldatabase=line[1].strip()
+        if line[0].strip() == 'mysqltable':
+          mysqltable=line[1].strip()
+          
+
+ffmpegcmd=ffmpegpath+ffmpegname
+indexpath=channelPath+'index/'
+fontpath=basepath+'Font/'
+logopath=basepath+'Logo/'
+
+
+
+
+
+
+
+
+episode=channelPath+"current.episode"
+show=channelPath+"current.show"
+elength = channelPath+"current.length"
+
+# sys.argv[1] Friendly Name
+# sys.argv[2] index file NO EXTENSION
+# sys.argv[3] Search String
+FriendlyName = sys.argv[2]
+indexfile = sys.argv[3]
+Search = sys.argv[4]
+nowshow = sys.argv[3].rsplit('/',1)[-1]
+epnum = int(sys.argv[5])
+
+#print "HERE"
+
+#print FriendlyName
+#print nowshow
+#print indexfile
+#print Search
+
+
+idx = indexfile+".idx"
+CurrentEpisode = -1
+if os.path.isfile(idx):
+  f = open(idx,"r")
+  bosh = f.readlines()
+  f.close()  
+  if len(bosh) > 0:
+    CurrentEpisode = int(bosh[0])
+
+#increment index file BEFORE SELECTING (this is key for resuming later)
+#CurrentEpisode = CurrentEpisode+1
+CurrentEpisode = epnum
+  
+#here to do
+#get full number of episodes fitting search
+#retrieve episode filepath, write to basedir/NOWSHOWING
+#update 5-til screen info such as schedule and Coming Up
+#here to do
+
+
+cnx=MySQLdb.connect(mysqlhost,mysqluser,mysqlpass,mysqldatabase)
+cursor=cnx.cursor()
+# use name in path above seasons below
+numepisodes=0
+fpath=[]
+fname=[]
+leng=[]
+cursor.execute("""SELECT fullpath,filename,length FROM """+mysqltable+""" WHERE fullpath LIKE '%"""+Search+"""%'""")
+# use name in path above seasons above
+for (fullpath,filename,length) in cursor:
+	numepisodes = numepisodes + 1
+	leng.append(length)
+	fname.append(filename)
+	fpath.append(fullpath)	
+cursor.close()
+cnx.close()
+if CurrentEpisode >= numepisodes:
+	CurrentEpisode=0
+
+f = open(channelPath+'tmp.name','w')
+f.write(fpath[CurrentEpisode])
+f.write('\n')
+f.close()
+
+

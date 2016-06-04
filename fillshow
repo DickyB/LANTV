@@ -1,0 +1,209 @@
+#!/usr/bin/python
+
+# fillshow script: Dicky B
+#                 dickyb@dickyb.com
+#
+# This is the feeder script file for the filler video
+# 
+# It checks to see if the Now time is >= the calculated
+# end time of the main video.  If not, skip it.  If the
+# main video *should* be over, it runs pickfill to choose
+# a filler video, then shows it.
+#
+# There is much ffmpeg voodoo like in cameraman at the end
+# of this script.  Alter as needed.
+#
+import os
+import datetime
+import sys
+import subprocess
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+if len(sys.argv)!= 2:
+  print "Usage:  fillshow <channel>"
+  exit()
+
+channelpath=""
+ffmpeg = ""
+ffmpegpath = ""
+logoimage=""
+feedurl = ""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+dynfont1 = ""
+dynfont2 = ""
+dynfont3 = ""
+inphone = ""
+inphonefont = ""
+splashpath=""
+splashname=""
+splashext=""
+
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+
+#write pid to channel's director.pid for killing later.
+pid=os.getpid()
+f=open(channelPath+'fillshow.pid','w')
+f.write(str(pid))
+f.write('\n')
+f.close()
+
+
+
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'splashpath':
+          splashpath=line[1].strip()
+        if line[0].strip() == 'splashname':
+          splashname=line[1].strip()
+        if line[0].strip() == 'splashext':
+          splashext=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          inphonefont=line[1].strip()
+        if line[0].strip() == 'logoimage':
+          logoimage=line[1].strip()
+
+
+ffmpegcmd = ffmpegpath+ffmpegname
+fontpath = basepath+'Font/'
+logopath = basepath+'Logo/'+logoimage
+
+
+offsetfile=channelPath+"offset.min"
+fillerfile=channelPath+"current.filler"
+filleroffset=channelPath+"current.filleroffset"
+
+#normal logo image
+#logopath = basepath+'logo/'+stationlib.getlogoimage()
+
+
+
+# get current time, as Hour and Minute
+CurrentTime=datetime.datetime.now()
+Hts = datetime.datetime.strftime(CurrentTime,'%H')
+NowHour=int(Hts)
+Hts = datetime.datetime.strftime(CurrentTime,'%M')
+NowMin=int(Hts)
+
+TODMin = (NowHour * 60) + NowMin
+
+
+
+# first, check if we need to run a filler,
+# or skip because of a fuckup in main show
+# determine if current episode is over
+elength=channelPath+'current.length'
+f = open(elength,"r")
+tmp=f.readlines()
+f.close()
+lens=tmp[0].strip()
+etime = int(lens)
+
+stime=channelPath+'current.start'
+f = open(stime,'r')
+tmp=f.readlines()
+f.close()
+stas=tmp[0].strip()
+starttime=int(stas)
+
+showend=(starttime*60)+etime
+if showend > ((TODMin*60)+NowSec):
+  exit()
+
+# WE NEED TO DIG OUT A FILLER HERE.
+# from database and all that shit.
+# we do NOT care about continuing filler video, just pick another one. It really doesn't matter.
+video=""
+
+#uses pickfill script in station directory to pick
+#a filler episode
+os.system(basepath+"pickfill"+' '+channelName)
+
+
+f = open(fillerfile,"r")
+tmp = f.readlines()
+f.close()
+video=tmp[0].strip()
+
+
+optoff = "-ss 0"
+if os.path.isfile(filleroffset):
+  f = open(filleroffset,"r")
+  tmp=f.readlines()
+  f.close()
+  optoff="-ss "+tmp[0].strip()
+
+# John Madden here, because resuming is not needed.
+precmd=ffmpegcmd+" "
+prearg = " -re -i "
+
+# this is the basic version. looparg is set to empty
+# as I was using a looped GIF radar image for the
+# logo image during fillers.
+looparg=''
+postcmd=looparg+' -c:v mpeg2video \
+-b:v 6000k \
+-c:a libfaac \
+-b:a 128k \
+-f mpegts - | '+ffmpegcmd+' -re -i - '+feedurl
+
+
+
+#this supports an animated gif as the logo
+#it is commented out because it requires ffmpeg
+#to be rebuilt with text overlay options, etc.
+#postcmd=looparg+' -i '+logopath+' -filter_complex \
+#"scale=-1:720,\
+#overlay=main_w-358:main_h-202, \
+#drawtext=fontsize=22:fontcolor=white@0.5:shadowcolor=black@0.4:fontfile='+fontpath+dynfont1+':textfile='+dyntext1+':reload=1:shadowx=1:shadowy=1:x=w-tw-5:y=5, \
+#drawtext=fontsize=18:fontcolor=white@0.7:fontfile='+fontpath+dynfont2+':shadowcolor=black@0.7:shadowx=1:shadowy=1:textfile='+dyntext2+':reload=1:x=3:y=5,\
+#drawtext=fontsize=22:fontcolor=white@1:fontfile='+fontpath+dynfont3+':textfile='+dyntext3+':reload=1:box=1:boxcolor=black@0.6:x=(w/2)-(tw/2):y=h-(th*2),\
+#drawtext=fontsize=32:fontcolor=white@1:fontfile='+fontpath+inphonefont+':textfile='+inphone+':reload=1:box=1:boxcolor=black@0.6:x=(w/2)-(tw/2):y=(h/2)-(th/2) \
+#" \
+#-map 0:a \
+#-c:v mpeg2video \
+#-b:v 6000k \
+#-c:a libfaac \
+#-b:a 128k \
+#-f mpegts - | '+ffmpegcmd+' -re -i - '+feedurl
+
+# run that beast of a command line
+gocmd = precmd+optoff+prearg+'"'+video+'"'+postcmd
+os.system(gocmd)
+#print gocmd
+
+
+

@@ -1,0 +1,8 @@
+This is where the fonts go that you want to use, when you enable and use
+text overlays.  Ffmpeg doesn't come stock with that support, you'll need to
+recompile for that.  It's not that scary, but don't worry about it until you
+get everything *else* working.
+
+I know you could use the path to fonts you use for xorg, but on a headless
+system, that path isn't there.  It's easier this way.
+

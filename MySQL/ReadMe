@@ -1,0 +1,42 @@
+For this thing to even work, as-is, you'll need a MySQL database set up.
+You'll also need to scan all your video files and have them in the database.
+
+
+First, you'll need to login to MySQL (you need an account)
+
+mysql -u mysql_user -p
+Enter password:
+
+then:
+
+mysql > create database databasename;
+mysql > show databases;
+mysql > create user thisisusername;
+mysql > grant all on databasename.* to 'thisisusername'@'localhost' identified by 'thisispassword';
+
+(that grants EVERYTHING to thisisusername, so if you don't like that, look
+up how to limit access)
+This should create your database, and have it ready to use.  You'll want to
+change databasename, thisisusername, and thisispassword to appropriate
+strings.
+
+next:
+
+mysql > create table Video ( fullpath TEXT NOT NULL, filename TEXT NOT NULL, length TEXT NOT NULL)
+
+That should hook you up with everything you need to start filling it up with
+your video files' info.
+
+The script I use is 4 years old, highly modified for my specific needs,
+including making thumbnails.  It's horribly written, and not ready for
+sharing.
+
+Basically, you'll have to write it or wait until I get it fixed up and
+stripped down for use with this.  It's fairly easy, though.
+
+use find to get a full listing of all the video files. Then go through the
+list and use ffmpeg to find the length of the video, then put the three
+values fullpath, filename, and length into the table.  Note: fullpath is the
+full path plus filename.  Kind of redundant, but that's the way I'm doing it
+for something else.  This project is really just leeching off the other
+thing's database.

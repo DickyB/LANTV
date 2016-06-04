@@ -1,0 +1,230 @@
+#!/usr/bin/python
+#
+# showschedule: Dicky B (dickyb@dickyb.com)
+#
+# writes the last few shows and next few shows to dyntext2, as
+# defined in channel.conf in the channel subdirectory.
+#
+# Note: Episode numbers and movie titles may be wonky and require
+#       some tweaking to display correctly.
+#
+# Note: ffmpeg needs to have text overlay support for
+#       text overlays.  Requires recompile, usually.
+#
+
+
+import datetime
+import os
+import sys
+import func
+
+
+
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+if len(sys.argv)!= 2:
+  print "Usage:  showschedule <channel>"
+  exit()
+
+#get current time
+#DOW 0=Monday ... 6=Sunday
+DOW=func.getDayOfWeek()
+NowHour=func.getCurrentHour()
+NowMinute=func.getCurrentMinute()
+NowSecond=func.getCurrentSecond()
+TODMin=func.getTODMin()
+
+
+#this entire hunk sets up the config.
+#there is cruft in this bit.  Left it Just In Case for now.
+
+channelPath=""
+ffmpeg = ""
+ffmpegpath = ""
+logoimage=""
+feedurl = ""
+dyntext1=""
+dyntext2=""
+dyntext3=""
+dynfont1 = ""
+dynfont2 = ""
+dynfont3 = ""
+inphone = ""
+inphonefont = ""
+splashpath=""
+splashname=""
+splashext=""
+savesched=""
+
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+progfile=channelPath+'schedule'
+savesched=channelPath+'display.schedule'
+idxpath=channelPath+'index/'
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'ffmpeg':
+	  ffmpegname=line[1].strip()
+	if line[0].strip() == 'ffmpegpath':
+	  ffmpegpath=line[1].strip()
+	if line[0].strip() == 'channelfullname':
+	  channelFullName=line[1].strip()
+        if line[0].strip() == 'showspath':
+          showspath=line[1].strip()
+        if line[0].strip() == 'feedurl':
+          feedurl=line[1].strip()
+        if line[0].strip() == 'splashpath':
+          splashpath=line[1].strip()
+        if line[0].strip() == 'splashname':
+          splashname=line[1].strip()
+        if line[0].strip() == 'splashext':
+          splashext=line[1].strip()
+        if line[0].strip() == 'dyntext1':
+          dyntext1=line[1].strip()
+        if line[0].strip() == 'dynfont1':
+          dynfont1=line[1].strip()
+        if line[0].strip() == 'dyntext2':
+          dyntext2=line[1].strip()
+        if line[0].strip() == 'dynfont2':
+          dynfont2=line[1].strip()
+        if line[0].strip() == 'dyntext3':
+          dyntext3=line[1].strip()
+        if line[0].strip() == 'dynfont3':
+          dynfont3=line[1].strip()
+        if line[0].strip() == 'inphone':
+          inphone=line[1].strip()
+        if line[0].strip() == 'phonefont':
+          inphonefont=line[1].strip()
+        if line[0].strip() == 'logoimage':
+          logoimage=line[1].strip()
+
+
+ffmpegcmd = ffmpegpath+ffmpegname
+fontpath = basepath+'Font/'
+logopath = basepath+'Logo/'+logoimage
+#end config init
+
+
+
+
+
+todaysched=progfile+'.'+str(DOW)
+if os.path.isfile(todaysched):
+  progfile=todaysched
+
+
+#read program schedule
+f = open(progfile,"r")
+proglines = f.readlines()
+f.close()
+
+
+
+enablerollover=False
+displaysched=[]
+if NowHour > 17:
+  enablerollover=True
+FirstHour = NowHour - 2
+if FirstHour < 0:
+  FirstHour=FirstHour+24
+
+for z in range(0,5):
+  for x in range(0,len(proglines)):
+    s = proglines[x].split(':')
+    if len(s)>3:
+      start1 = int(s[0])
+      startmins=int(s[1])+(int(s[0])*60)
+      dl=":"
+      cs = s[3]
+      cshow=cs
+      MovieName=False
+      if FirstHour == start1:
+        ext="am"
+        shower=str(FirstHour)
+        mower=int(s[1])
+        showmin=str(mower)
+        gg = s[4:]
+        fshow=dl.join(gg).strip()
+        if FirstHour > 11:
+          ext="pm"
+          shower=str(FirstHour-12)
+        if FirstHour == 12:
+            shower=str(12)
+        if FirstHour == 0:
+          shower=str(12)
+        if int(shower) < 10:
+          shower="0"+shower
+        if mower < 10:    
+          showmin="0"+showmin        
+        #get next episode  
+        nextep="1"
+        if os.path.isfile(idxpath+cshow+".idx"):
+          f = open(idxpath+cshow+".idx","r")
+          tmp=f.readlines()
+          f.close()
+          nextep=tmp[0].strip()
+        #oops
+        ne=int(nextep)+1
+        nextep=str(ne)
+        if fshow[0]=='*':
+          if TODMin >= startmins:
+            ne=ne-1
+          sp = showspath+s[3]+'title'
+          sip = channelName
+          ifp = idxpath
+          bif= sp+' '+channelName+' '+basepath+' '+ifp+' '+str(ne)
+          os.system(bif)          
+          MovieName=True
+          f = open(channelPath+'tmp.name','r')
+          tmps=f.readlines()
+          f.close()
+          fpa=tmps[0].strip()
+          tpa=os.path.basename(fpa)
+          eshow = tpa[:-4]
+          if len(fshow) < 2:
+            fshow = eshow
+          else:
+            fshow = fshow[1:]+': '+eshow
+          os.remove(channelPath+'tmp.name')
+        if MovieName:
+          displaysched.append("  "+shower+":"+showmin+ext+'  '+fshow+'\n')
+        else:
+          displaysched.append("  "+shower+":"+showmin+ext+'  '+fshow+' #'+nextep+'\n')
+        
+  FirstHour=FirstHour+1
+  if FirstHour>23:
+    FirstHour=0  
+
+center=(38/2)-(len(channelFullName)/2)
+cstring=""
+for m in range(0,center):
+  cstring=cstring+" "  
+cstring="\n"+cstring
+
+f = open(dyntext2,"r+")
+f.seek(0)
+f.truncate(0)
+f.write(cstring+channelFullName+'\n')
+f.write("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n")
+f.writelines(displaysched)
+f.write("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n")
+f.close()
+
+f = open(savesched,"w")
+f.write(cstring+channelFullName+'\n')
+f.write("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n")
+f.writelines(displaysched)
+f.write("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n")
+f.close()
+
+
+
+
+

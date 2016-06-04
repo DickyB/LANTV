@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# This is called by director, so you don't need to worry about the
+# $# args unless you fart around with director.  
+#
+# first runs queueshow, which takes care of the grunt work.
+#
+# second is Channel Name.  It's not really the channel name, but the 
+# subdirectory under the main directory (where director is), the 
+# channel's "Friendly Name" is defined in channel.conf.
+#
+# Next is the show's Friendly Name.  This is probably superfluous, 
+# but we add it anyway, for clarity.
+#
+# indexfile is usually the same as this file's filename. No extension
+# is required, or desired.
+#
+# "Search Phrase" is what you will look for in the database to find
+# all the episodes of a particular show.
+# if you have all episodes of Awesome Show in
+# /home/user/video/shows/Awesome Show/
+# and seasons and dvd extras under that, like:
+#
+# /home/user/video/shows/Awesome Show/DVD Extras
+# /home/user/video/shows/Awesome Show/Season 1
+# /home/user/video/shows/Awesome Show/Season 2
+# /home/user/video/shows/Awesome Show/Season 3
+# /home/user/video/shows/Awesome Show/TV Movies
+#
+# for example, you might use the search phrase
+# "/shows/Awesome Show/Season"
+# to use only the regular season episodes, bypassing the DVD extras
+# and TV Movies from the series.
+#
+#
+
+$2/queueshow $1 "Awesome Show" "$3/awesomeshow" "/shows/Awesome Show/Season"
+
+
+
+
+
+

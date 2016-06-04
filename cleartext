@@ -1,0 +1,68 @@
+#!/usr/bin/python
+#
+# cleartext: Dicky B (dickyb@dickyb.com)
+#
+# just clear the dynamic text files, no big deal.
+#
+# Note: Recompilation of ffmpeg will be needed if
+#       using text overlays, h.264, etc.
+#
+# Note: If text files used for overlays are not
+#       readable/existent, ffmpeg will crap out
+#       and exit.  This also goes for any other
+#       overlay like image/video/whatever.
+#       I've modified my ffmpeg to ignore missing
+#       textfiles when video is running, but not
+#       when initially starting.
+#
+
+import os
+import sys
+
+
+#get basepath
+basepath=os.path.dirname(os.path.realpath(__file__))+'/'
+
+
+
+if len(sys.argv)!=2:
+  print "Usage:  cleartext <channel directory>"
+  exit()
+
+
+#read and fix
+#should be simple, do it soon.
+dyntext2=""
+dyntext3=""
+
+
+
+
+name = sys.argv[1]
+channelName=name
+channelPath=basepath+channelName+'/'
+f = open(channelPath+'channel.conf')
+lines=f.readlines()
+f.close()
+for b in lines:
+	c=b.strip()
+	line=c.split('=')
+	if line[0].strip() == 'dyntext2':
+	  dyntext2=line[1].strip()
+	if line[0].strip() == 'dyntext3':
+	  dyntext3=line[1].strip()
+#note: only bother to parse what we need.  Treat the config like a salad bar.
+
+#semi-safely clear dynamic text files by NOT just writing to them
+#or deleting them.  This seems stupid, but it's to compensate for
+#the insane way ffmpeg checks dynamic text files every frame.
+f = open(dyntext2,"r+")
+f.seek(0)
+f.truncate(0)
+f.write("\n\n")
+f.close()
+f = open(dyntext3,"r+")
+f.seek(0)
+f.truncate(0)
+f.write("\n\n")
+f.close()

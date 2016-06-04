@@ -1,0 +1,17 @@
+ToDo:
+fix episode number in onscreen schedule display (low priority fix)
+
+*display schedules of other channels
+	Can probably just function almost the entire thing of showschedule,
+	with arg of channelname.  Then call that function using each of the 
+	args to showschedule adding all output to a nice list, then write
+	all that to dyntext2.txt as usual.  Using current channel as the
+	first arg, etc.  Should look nice, but I can't be arsed to do this
+	for the test build, since overlays will not be included as default,
+	due to ffmpeg recompilation requirements.  Basic 1 channel
+	functionality will be in, but overlay options to ffmpeg in cameraman
+	and fillshow will not be default (probably should put example
+	overlay-enabled stuff in comments in those scripts somewhere handy).
+	*this is done on my setup, so ignore all that.
+
+remove extra config reading from some of the scripts

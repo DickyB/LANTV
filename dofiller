@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# dofiller: Dicky B (dickyb@dickyb.com)
+#
+# I was going to put a ridiculously long license readme in here 
+# like I've seen in short scripts before, but I didn't want to 
+# bother with it.
+#
+# shows a filler and re-runs director.
+#
+#
+$1/fillshow $2
+$1/director $2
+
+
